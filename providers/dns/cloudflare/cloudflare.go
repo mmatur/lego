@@ -20,29 +20,34 @@ const CloudFlareAPIURL = "https://api.cloudflare.com/client/v4"
 
 // DNSProvider is an implementation of the acme.ChallengeProvider interface
 type DNSProvider struct {
-	authEmail string
-	authKey   string
+	authEmail          string
+	authKey            string
+	authUserServiceKey string
 }
 
 // NewDNSProvider returns a DNSProvider instance configured for cloudflare.
 // Credentials must be passed in the environment variables: CLOUDFLARE_EMAIL
-// and CLOUDFLARE_API_KEY.
+// and CLOUDFLARE_API_KEY or CLOUDFLARE_USER_SERVICE_KEY.
 func NewDNSProvider() (*DNSProvider, error) {
 	email := os.Getenv("CLOUDFLARE_EMAIL")
 	key := os.Getenv("CLOUDFLARE_API_KEY")
-	return NewDNSProviderCredentials(email, key)
+	userServiceKey := os.Getenv("CLOUDFLARE_USER_SERVICE_KEY")
+	return NewDNSProviderCredentials(email, key, userServiceKey)
 }
 
 // NewDNSProviderCredentials uses the supplied credentials to return a
 // DNSProvider instance configured for cloudflare.
-func NewDNSProviderCredentials(email, key string) (*DNSProvider, error) {
-	if email == "" || key == "" {
-		return nil, fmt.Errorf("CloudFlare credentials missing")
+func NewDNSProviderCredentials(email, key string, userServiceKey string) (*DNSProvider, error) {
+	if userServiceKey == "" {
+		if email == "" || key == "" {
+			return nil, fmt.Errorf("CloudFlare credentials missing")
+		}
 	}
 
 	return &DNSProvider{
-		authEmail: email,
-		authKey:   key,
+		authEmail:          email,
+		authKey:            key,
+		authUserServiceKey: userServiceKey,
 	}, nil
 }
 
@@ -179,6 +184,7 @@ func (c *DNSProvider) makeRequest(method, uri string, body io.Reader) (json.RawM
 
 	req.Header.Set("X-Auth-Email", c.authEmail)
 	req.Header.Set("X-Auth-Key", c.authKey)
+	req.Header.Set("X-Auth-User-Service-Key", c.authUserServiceKey)
 	//req.Header.Set("User-Agent", userAgent())
 
 	client := http.Client{Timeout: 30 * time.Second}
