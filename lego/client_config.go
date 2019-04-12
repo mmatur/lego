@@ -87,18 +87,26 @@ func createDefaultHTTPClient() *http.Client {
 // return nil. If there is an error creating a *x509.CertPool from the provided
 // caCertificatesEnvVar value then initCertPool will panic.
 func initCertPool() *x509.CertPool {
-	if customCACertsPath := os.Getenv(caCertificatesEnvVar); customCACertsPath != "" {
-		customCAs, err := ioutil.ReadFile(customCACertsPath)
+	if customCACerts := os.Getenv(caCertificatesEnvVar); customCACerts != "" {
+		customCAs, err := readContentOrFile(customCACerts)
 		if err != nil {
 			panic(fmt.Sprintf("error reading %s=%q: %v",
-				caCertificatesEnvVar, customCACertsPath, err))
+				caCertificatesEnvVar, customCACerts, err))
 		}
 		certPool := x509.NewCertPool()
 		if ok := certPool.AppendCertsFromPEM(customCAs); !ok {
 			panic(fmt.Sprintf("error creating x509 cert pool from %s=%q: %v",
-				caCertificatesEnvVar, customCACertsPath, err))
+				caCertificatesEnvVar, customCACerts, err))
 		}
 		return certPool
 	}
 	return nil
+}
+
+func readContentOrFile(customCACerts string) ([]byte, error) {
+	if _, err := os.Stat(customCACerts); err != nil {
+		return []byte(customCACerts), nil
+	}
+
+	return ioutil.ReadFile(customCACerts)
 }
